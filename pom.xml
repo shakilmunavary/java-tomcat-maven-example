@@ -39,14 +39,23 @@
           </execution>
         </executions>
       </plugin>
+      <!-- Add the maven-war-plugin configuration here -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.4.0</version>
+        <configuration>
+          <webXml>WebContent/WEB-INF/web.xml</webXml>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
-   <distributionManagement>
-       <repository>
-         <id>internal.repo</id>
-         <name>Internal repo</name>
-         <url>file:/var/lib/jenkins/workspace/Capstone-Demo-Proj/target</url>
-       </repository>
-   </distributionManagement>
-  
+  <distributionManagement>
+    <repository>
+      <id>internal.repo</id>
+      <name>Internal repo</name>
+      <url>file:/var/lib/jenkins/workspace/Capstone-Demo-Proj/target</url>
+    </repository>
+  </distributionManagement>
 </project>

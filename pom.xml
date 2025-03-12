@@ -18,8 +18,7 @@
   <build>
     <finalName>java-tomcat-maven-example</finalName>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
+      <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
         <version>2.3</version>
         <executions>
@@ -31,7 +30,7 @@
                 <artifactItem>
                   <groupId>com.github.jsimone</groupId>
                   <artifactId>webapp-runner</artifactId>
-                  <version>8.5.11.3</version>
+                 >8.5.11.3</version>
                   <destFileName>webapp-runner.jar</destFileName>
                 </artifactItem>
               </artifactItems>
@@ -39,7 +38,6 @@
           </execution>
         </executions>
       </plugin>
-      <!-- Add the maven-war-plugin configuration here -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
@@ -47,6 +45,15 @@
         <configuration>
           <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
           <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <!-- Add the Maven Surefire Plugin here -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.0.0-M5</version>
+        <configuration>
+          <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
         </configuration>
       </plugin>
     </plugins>

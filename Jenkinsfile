@@ -1,0 +1,47 @@
+groovy
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = "ABCD"
+        ENVIRONMENT = "Dev"
+        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example"
+        FILE_REPO = "Jfrog"
+        TECH_STACK = "Java"
+        TARGET_ENV = "VM"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: "${REPO_URL}", branch: 'main'
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                withSonarQubeEnv('Sonar') {
+                    sh 'mvn clean verify sonar:sonar'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'scp target/${APP_NAME}.war ${TARGET_ENV}:/path/to/deploy'
+            }
+        }
+    }
+
+    post {
+        always {
+            junit 'target/surefire-reports/TEST-*.xml'
+        }
+    }
+}

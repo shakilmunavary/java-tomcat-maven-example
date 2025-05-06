@@ -1,21 +1,20 @@
 groovy
 pipeline {
     agent any
-
     environment {
-        APP_NAME = 'abc'
-        ENVIRONMENT = 'Dev'
-        REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example'
-        FILE_REPO = 'Nexus'
-        TECH_STACK = 'Java'
-        TARGET_ENV = 'VM'
-        ADMIN_EMAIL = 'admin@example.com'
+        APP_NAME = "Roshan"
+        ENV = "Dev"
+        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
+        FILE_REPO = "Jfrog"
+        TECH_STACK = "Java"
+        QUALITY_TOOL = "Sonar"
+        TARGET_ENV = "VM"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: REPO_URL
+                git url: "${REPO_URL}"
             }
         }
         stage('Build') {
@@ -23,33 +22,25 @@ pipeline {
                 sh 'mvn clean package'
             }
         }
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
         stage('Quality Check') {
             steps {
-                sh 'sonar-scanner -Dsonar.projectKey=${APP_NAME} -Dsonar.sources=. -Dsonar.host.url=http://localhost:9000'
+                sh 'mvn sonar:sonar'
             }
         }
         stage('Deploy') {
             steps {
-                sh 'deploy to ${TARGET_ENV}'
+                sh 'jfrog rt upload "target/*.war" "${FILE_REPO}/${APP_NAME}/${ENV}/"'
             }
         }
         stage('Notification') {
             steps {
-                mail to: ADMIN_EMAIL,
-                     subject: "Pipeline ${APP_NAME} for ${ENVIRONMENT} is completed",
-                     body: "The pipeline has been successfully executed."
+                sh 'echo "Pipeline completed. Check deployment on ${TARGET_ENV}." | mail -s "${APP_NAME} Pipeline Notification" email@example.com'
             }
-        }
-    }
-
-    post {
-        always {
-            junit '**/target/surefire-reports/TEST-*.xml'
-        }
-        failure {
-            mail to: ADMIN_EMAIL,
-                 subject: "Pipeline ${APP_NAME} for ${ENVIRONMENT} has failed",
-                 body: "The pipeline has failed. Please check the logs."
         }
     }
 }

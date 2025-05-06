@@ -3,56 +3,53 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "ABC"
-        ENVIRONMENT = "Dev"
-        CICD_TOOLS = "Jenkins"
-        REPO_DETAILS = "Github"
-        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example"
-        FILE_REPO = "Jfrog"
-        TECH_STACK = "Java"
-        QUALITY_TOOLS = "Sonar"
-        TARGET_ENV = "VM"
+        APP_NAME = 'abc'
+        ENVIRONMENT = 'Dev'
+        REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example'
+        FILE_REPO = 'Nexus'
+        TECH_STACK = 'Java'
+        TARGET_ENV = 'VM'
+        ADMIN_EMAIL = 'admin@example.com'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: '$REPO_URL'
+                git url: REPO_URL
             }
         }
-
         stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean package'
             }
         }
-
-        stage('Code Quality') {
+        stage('Quality Check') {
             steps {
-                script {
-                    withSonarQubeEnv('SonarServer') {
-                        sh 'mvn sonar:sonar'
-                    }
-                }
+                sh 'sonar-scanner -Dsonar.projectKey=${APP_NAME} -Dsonar.sources=. -Dsonar.host.url=http://localhost:9000'
             }
         }
-
         stage('Deploy') {
             steps {
-                sh 'mvn -Dmaven.test.skip=true package'
-                sh 'java -jar target/*.war'
+                sh 'deploy to ${TARGET_ENV}'
+            }
+        }
+        stage('Notification') {
+            steps {
+                mail to: ADMIN_EMAIL,
+                     subject: "Pipeline ${APP_NAME} for ${ENVIRONMENT} is completed",
+                     body: "The pipeline has been successfully executed."
             }
         }
     }
 
     post {
         always {
-            echo 'Pipeline completed'
-            emailext(
-                subject: "Pipeline: ${currentBuild.currentResult}",
-                body: "Pipeline completed. Check console output at: ${env.BUILD_URL}",
-                to: 'you@example.com'
-            )
+            junit '**/target/surefire-reports/TEST-*.xml'
+        }
+        failure {
+            mail to: ADMIN_EMAIL,
+                 subject: "Pipeline ${APP_NAME} for ${ENVIRONMENT} has failed",
+                 body: "The pipeline has failed. Please check the logs."
         }
     }
 }

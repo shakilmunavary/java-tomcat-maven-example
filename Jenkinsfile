@@ -1,46 +1,30 @@
 pipeline {
     agent any
-    environment {
-        APP_NAME = 'ABC'
-        ENVIRONMENT = 'Dev'
-        REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example'
-        FILE_REPO = 'Jfrog'
-        TECH_STACK = 'Java'
-        QUALITY_TOOLS = 'Sonar'
-        TARGET_ENV = 'VM'
+    tools {
+        maven 'Maven'
     }
     stages {
         stage('Checkout') {
             steps {
-                git url: REPO_URL
+                git url: 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean package'
             }
         }
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    def sonarQubeScannerHome = tool 'SonarQubeScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${sonarQubeScannerHome}/bin/sonar-scanner"
-                    }
+                withSonarQubeEnv('SonarServer') {
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
-        stage('Deploy') {
+        stage('Deploy to VM') {
             steps {
-                sh 'mvn deploy'
+                // Add your deployment steps here. This could be a script that copies the built artifact to the VM and starts it.
             }
-        }
-    }
-    post {
-        failure {
-            mail to: 'admin@test.com',
-                 subject: "Jenkins: ${APP_NAME} - Build Failed",
-                 body: "The build of ${APP_NAME} has failed. Please check the logs."
         }
     }
 }

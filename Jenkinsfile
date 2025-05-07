@@ -1,29 +1,59 @@
 pipeline {
     agent any
-    tools {
-        maven 'Maven'
+
+    environment {
+        APP_NAME = "add"
+        ENV = "Dev"
+        CI_CD_TOOL = "Jenkins"
+        VCS_TOOL = "Github"
+        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
+        FILE_REPO = "Jfrog"
+        TECH_STACK = "Java"
+        CODE_ANALYSIS_TOOL = "Sonar"
+        TARGET_ENV = "AWS EC2"
     }
+
     stages {
-        stage('Checkout') {
+        stage('Code Checkout') {
             steps {
-                git url: 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: "${REPO_URL}"]]])
             }
         }
+
         stage('Build') {
             steps {
                 sh 'mvn clean package'
             }
         }
-        stage('SonarQube Analysis') {
+
+        stage('Unit Testing') {
             steps {
-                withSonarQubeEnv('SonarServer') {
-                    sh 'mvn sonar:sonar'
-                }
+                sh 'mvn test'
             }
         }
-        stage('Deploy to VM') {
+
+        stage('Code Quality Analysis') {
             steps {
-                // Add your deployment steps here. This could be a script that copies the built artifact to the VM and starts it.
+                // Code quality analysis steps here
+                // sh 'sonar-scanner ...'
+            }
+        }
+
+        stage('Upload Artifacts') {
+            steps {
+                // Upload artifacts steps here
+                // sh 'jfrog upload ...'
+            }
+        }
+
+        stage('Deployment') {
+            when {
+                environment name: 'TARGET_ENV', value: 'AWS EC2'
+            }
+            steps {
+                sh 'sudo systemctl stop tomcat'
+                sh 'sudo cp target/${APP_NAME}.jar /opt/tomcat/webapps/'
+                sh 'sudo systemctl start tomcat'
             }
         }
     }

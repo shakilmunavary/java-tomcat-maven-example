@@ -1,60 +1,55 @@
 pipeline {
     agent any
-
     environment {
-        APP_NAME = "add"
+        APP_NAME = "sddd"
         ENV = "Dev"
         CI_CD_TOOL = "Jenkins"
-        VCS_TOOL = "Github"
+        VCS = "Github"
         REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
         FILE_REPO = "Jfrog"
         TECH_STACK = "Java"
         CODE_ANALYSIS_TOOL = "Sonar"
         TARGET_ENV = "AWS EC2"
     }
-
     stages {
         stage('Code Checkout') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: "${REPO_URL}"]]])
+                git(url: REPO_URL, branch: ENV)
             }
         }
-
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean install'
             }
         }
-
         stage('Unit Testing') {
             steps {
                 sh 'mvn test'
             }
         }
-
-        stage('Code Quality Analysis') {
+        stage('Code quality Analysis') {
             steps {
-                // Code quality analysis steps here
-                // sh 'sonar-scanner ...'
+                // sh 'sonar-scanner'
+                echo "Code Analysis done"
             }
         }
-
         stage('Upload Artifacts') {
             steps {
-                // Upload artifacts steps here
-                // sh 'jfrog upload ...'
+                // sh 'jfrog upload'
+                echo "Upload Artifacts done"
             }
         }
-
         stage('Deployment') {
-            when {
-                environment name: 'TARGET_ENV', value: 'AWS EC2'
-            }
             steps {
                 sh 'sudo systemctl stop tomcat'
                 sh 'sudo cp target/${APP_NAME}.jar /opt/tomcat/webapps/'
                 sh 'sudo systemctl start tomcat'
             }
+        }
+    }
+    post {
+        always {
+            echo "Pipeline completed"
         }
     }
 }

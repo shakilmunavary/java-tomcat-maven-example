@@ -42,7 +42,7 @@ pipeline {
         stage('Deployment') {
             steps {
                 sh 'sudo systemctl stop tomcat'
-                sh 'sudo cp target/${APP_NAME}.jar /opt/tomcat/webapps/'
+                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
                 sh 'sudo systemctl start tomcat'
             }
         }

@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Code Checkout') {
             steps {
-                git(url: REPO_URL, branch: ENV)
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: "${REPO_URL}"]]])
             }
         }
         stage('Build') {

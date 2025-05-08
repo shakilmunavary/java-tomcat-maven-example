@@ -1,25 +1,14 @@
 pipeline {
     agent any
-    environment {
-        APP_NAME = "app2"
-        ENV = "Dev"
-        CI_CD_TOOL = "Jenkins"
-        VCS = "Github"
-        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
-        FILE_REPO = "Jfrog"
-        TECH_STACK = "Java"
-        CODE_ANALYSIS_TOOL = "Sonar"
-        TARGET_ENV = "AWS EC2"
-    }
     stages {
         stage('Code Checkout') {
             steps {
-                git branch: 'master', url: "${REPO_URL}"
+                git branch: 'master', url: 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean install'
             }
         }
         stage('Unit Testing') {
@@ -29,20 +18,25 @@ pipeline {
         }
         stage('Code Quality Analysis') {
             steps {
-                // Code analysis tool commands here
                 echo 'Code Analysis done'
+                // sh 'sonar-scanner'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // Artifact upload commands here
                 echo 'Upload Artifacts done'
+                // sh 'jfrog rt u "target/*.war"'
             }
         }
         stage('Deployment') {
             steps {
-                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps'
             }
+        }
+    }
+    post {
+        always {
+            junit 'target/surefire-reports/TEST-*.xml'
         }
     }
 }

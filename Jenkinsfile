@@ -1,20 +1,20 @@
 pipeline {
     agent any
     environment {
-        APP_NAME = "sddd"
-        ENV = "Dev"
-        CI_CD_TOOL = "Jenkins"
-        VCS = "Github"
-        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
-        FILE_REPO = "Jfrog"
-        TECH_STACK = "Java"
-        CODE_ANALYSIS_TOOL = "Sonar"
-        TARGET_ENV = "AWS EC2"
+        APP_NAME = 'app'
+        ENV = 'Dev'
+        CI_CD_TOOL = 'Jenkins'
+        VCS = 'Github'
+        REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        FILE_REPO = 'Jfrog'
+        TECH_STACK = 'Java'
+        CODE_ANALYSIS_TOOL = 'Sonar'
+        TARGET_ENV = 'AWS EC2'
     }
     stages {
         stage('Code Checkout') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: "${REPO_URL}"]]])
+                git url: REPO_URL, branch: 'main'
             }
         }
         stage('Build') {
@@ -27,29 +27,25 @@ pipeline {
                 sh 'mvn test'
             }
         }
-        stage('Code quality Analysis') {
+        stage('Code Quality Analysis') {
             steps {
-                // sh 'sonar-scanner'
-                echo "Code Analysis done"
+                // Code analysis steps would go here
+                echo 'Code Analysis done'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // sh 'jfrog upload'
-                echo "Upload Artifacts done"
+                // Artifact upload steps would go here
+                echo 'Upload Artifacts done'
             }
         }
         stage('Deployment') {
-            steps {
-                sh 'sudo systemctl stop tomcat'
-                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
-                sh 'sudo systemctl start tomcat'
+            when {
+                environment name: 'TARGET_ENV', value: 'AWS EC2'
             }
-        }
-    }
-    post {
-        always {
-            echo "Pipeline completed"
+            steps {
+                sh 'cp java-tomcat-maven-example.war /opt/tomcat/webapps/'
+            }
         }
     }
 }

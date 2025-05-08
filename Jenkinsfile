@@ -45,7 +45,7 @@ pipeline {
             steps {
                 script {
                     if ("${TARGET_ENV}" == "AWS EC2") {
-                        sh 'cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                        sh 'id;cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
                     }
                 }
             }

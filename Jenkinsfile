@@ -1,9 +1,20 @@
 pipeline {
     agent any
+    environment {
+        APP_NAME = "app2"
+        ENV = "Dev"
+        CI_CD_TOOL = "Jenkins"
+        VCS = "Github"
+        REPO_URL = "https://github.com/shakilmunavary/java-tomcat-maven-example.git"
+        FILE_REPO = "Jfrog"
+        TECH_STACK = "Java"
+        CODE_ANALYSIS_TOOL = "Sonar"
+        TARGET_ENV = "AWS EC2"
+    }
     stages {
         stage('Code Checkout') {
             steps {
-                git url: 'https://github.com/shakilmunavary/java-tomcat-maven-example.git', branch: 'master'
+                git branch: 'master', url: "${REPO_URL}"
             }
         }
         stage('Build') {
@@ -18,19 +29,18 @@ pipeline {
         }
         stage('Code Quality Analysis') {
             steps {
-                // Code quality analysis steps go here
+                // Code analysis tool commands here
                 echo 'Code Analysis done'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // Upload artifacts steps go here
+                // Artifact upload commands here
                 echo 'Upload Artifacts done'
             }
         }
         stage('Deployment') {
             steps {
-                // Deploy to AWS EC2
                 sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
             }
         }

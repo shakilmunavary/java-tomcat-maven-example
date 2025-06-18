@@ -1,26 +1,27 @@
 pipeline {
     agent any
     environment {
-        APP_NAME = 'HelloWorldapp'
-        ENV = 'Dev'
-        CI_CD_TOOL = 'Jenkins'
-        VCS = 'Github'
+        APP_NAME = 'ABCDEF'
+        ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        FILE_REPO = 'Jfrog'
-        TECH_STACK = 'Java'
-        CODE_ANALYSIS_TOOL = 'Sonar'
-        TARGET_ENV = 'AWS EC2'
-        EMAIL = 'roshan@example.com'
+        BRANCH = 'master'
+        JFROG_REPO = 'your_jfrog_repo_url'
+        SONAR_PROJECT_KEY = 'your_sonar_project_key'
+        SONAR_HOST_URL = 'your_sonar_host_url'
+        SONAR_TOKEN = 'your_sonar_token'
+        AWS_EC2_USER = 'your_aws_ec2_user'
+        AWS_EC2_HOST = 'your_aws_ec2_host'
+        AWS_EC2_KEY = 'your_aws_ec2_key'
     }
     stages {
         stage('Code Checkout') {
             steps {
-                checkout scm: [$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfigs: [[url: "${REPO_URL}"]]]
+                git branch: "${BRANCH}", url: "${REPO_URL}"
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean install'
             }
         }
         stage('Unit Testing') {
@@ -30,25 +31,26 @@ pipeline {
         }
         stage('Code Quality Analysis') {
             steps {
-                // Code analysis tool steps goes here
+                // Code quality analysis step
                 echo 'Code Analysis done'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // File repository upload steps goes here
+                // Upload artifacts step
                 echo 'Upload Artifacts done'
             }
         }
         stage('Deployment') {
             steps {
-                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                script {
+                    if (ENVIRONMENT == 'Dev') {
+                        sh '''
+                            sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/
+                        '''
+                    }
+                }
             }
-        }
-    }
-    post {
-        failure {
-            mail to: "${EMAIL}", subject: "Build failed: ${APP_NAME} in ${ENV}", body: "The build of ${APP_NAME} in ${ENV} has failed. Please check the logs at ${BUILD_URL}"
         }
     }
 }

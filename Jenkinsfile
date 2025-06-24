@@ -1,48 +1,61 @@
 pipeline {
     agent any
+
     environment {
-        APP_NAME = 'MAASAS'
-        ENV = 'Dev'
-        CI_CD_TOOL = 'Jenkins'
-        VCS = 'Github'
+        APP_NAME = 'LMNOP'
+        ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        FILE_REPO = 'Jfrog'
-        TECH_STACK = 'Java'
-        CODE_ANALYSIS_TOOL = 'Sonar'
-        TARGET_ENV = 'AWS EC2'
         BRANCH = 'master'
+        JFROG_URL = 'http://your-jfrog-url'
+        JFROG_CREDENTIALS_ID = 'your-jfrog-credentials-id'
+        SONAR_URL = 'http://your-sonar-url'
+        SONAR_TOKEN = 'your-sonar-token'
+        AWS_EC2_INSTANCE = 'your-ec2-instance'
+        AWS_EC2_CREDENTIALS_ID = 'your-ec2-credentials-id'
     }
+
     stages {
         stage('Code Checkout') {
             steps {
-                git branch: "${BRANCH}", url: "${REPO_URL}"
+                git url: "${REPO_URL}", branch: "${BRANCH}"
             }
         }
+
         stage('Build') {
             steps {
                 sh 'mvn clean install'
             }
         }
+
         stage('Unit Testing') {
             steps {
                 sh 'mvn test'
             }
         }
+
         stage('Code Quality Analysis') {
             steps {
-                // Code Quality Analysis
+                // Code quality analysis steps
                 echo 'Code Analysis done'
             }
         }
+
         stage('Upload Artifacts') {
             steps {
-                // Upload Artifacts
+                // Upload artifacts steps
                 echo 'Upload Artifacts done'
             }
         }
+
         stage('Deployment') {
             steps {
-                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                script {
+                    if (ENVIRONMENT == 'Dev') {
+                        sh '''
+                            sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/
+                        '''
+                    }
+                }
             }
         }
     }

@@ -1,68 +1,54 @@
 pipeline {
     agent any
-
     environment {
-        APP_NAME = 'Myapplication'
-        ENV = 'Dev'
+        APP_NAME = 'myapp1'
+        ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         BRANCH = 'master'
-        JFROG_URL = 'http://your-jfrog-url'
-        JFROG_REPO = 'your-jfrog-repo'
-        SONAR_URL = 'http://your-sonar-url'
-        SONAR_TOKEN = 'your-sonar-token'
-        TARGET_ENV = 'AWS EC2'
-        EMAIL_RECIPIENT = 'roshan@example.com'
+        JFROG_REPO = 'your_jfrog_repo_url'
+        SONAR_PROJECT_KEY = 'your_sonar_project_key'
+        SONAR_ORGANIZATION = 'your_sonar_organization'
+        SONAR_TOKEN = 'your_sonar_token'
+        AWS_EC2_INSTANCE = 'your_aws_ec2_instance'
+        TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapps'
     }
-
     stages {
         stage('Code Checkout') {
             steps {
                 git branch: "${BRANCH}", url: "${REPO_URL}"
             }
         }
-
         stage('Build') {
             steps {
                 sh 'mvn clean install'
             }
         }
-
         stage('Unit Testing') {
             steps {
                 sh 'mvn test'
             }
         }
-
         stage('Code Quality Analysis') {
             steps {
-                // Code quality analysis
+                // Code Quality Analysis
                 echo 'Code Analysis done'
             }
         }
-
         stage('Upload Artifacts') {
             steps {
-                // Upload artifacts
+                // Upload Artifacts
                 echo 'Upload Artifacts done'
             }
         }
-
         stage('Deployment') {
             steps {
                 script {
-                    if (env.TARGET_ENV == 'AWS EC2') {
-                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                    if (ENVIRONMENT == 'Dev') {
+                        sh "scp target/java-tomcat-maven-example.war ${AWS_EC2_INSTANCE}:${TOMCAT_WEBAPP_DIR}"
+                        sh "ssh ${AWS_EC2_INSTANCE} 'sudo cp ${TOMCAT_WEBAPP_DIR}/java-tomcat-maven-example.war ${TOMCAT_WEBAPP_DIR}/'"
                     }
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            mail to: "${EMAIL_RECIPIENT}",
-                 subject: "Build Success for ${APP_NAME}",
-                 body: "The build for ${APP_NAME} in ${ENV} environment was successful."
         }
     }
 }

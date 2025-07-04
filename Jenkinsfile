@@ -1,16 +1,16 @@
 pipeline {
     agent any
     environment {
-        APP_NAME = 'myapp1'
+        APP_NAME = 'LMNOP'
         ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         BRANCH = 'master'
-        JFROG_REPO = 'your_jfrog_repo_url'
-        SONAR_PROJECT_KEY = 'your_sonar_project_key'
-        SONAR_ORGANIZATION = 'your_sonar_organization'
-        SONAR_TOKEN = 'your_sonar_token'
-        AWS_EC2_INSTANCE = 'your_aws_ec2_instance'
-        TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapps'
+        JFROG_URL = 'http://your-jfrog-url'
+        JFROG_CREDENTIALS_ID = 'your-jfrog-credentials-id'
+        SONAR_URL = 'http://your-sonar-url'
+        SONAR_TOKEN = 'your-sonar-token'
+        AWS_EC2_INSTANCE = 'your-ec2-instance'
+        AWS_EC2_CREDENTIALS_ID = 'your-ec2-credentials-id'
     }
     stages {
         stage('Code Checkout') {
@@ -30,13 +30,13 @@ pipeline {
         }
         stage('Code Quality Analysis') {
             steps {
-                // Code Quality Analysis
+                // Code quality analysis steps
                 echo 'Code Analysis done'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // Upload Artifacts
+                // Upload artifacts steps
                 echo 'Upload Artifacts done'
             }
         }
@@ -44,8 +44,7 @@ pipeline {
             steps {
                 script {
                     if (ENVIRONMENT == 'Dev') {
-                        sh "scp target/java-tomcat-maven-example.war ${AWS_EC2_INSTANCE}:${TOMCAT_WEBAPP_DIR}"
-                        sh "ssh ${AWS_EC2_INSTANCE} 'sudo cp ${TOMCAT_WEBAPP_DIR}/java-tomcat-maven-example.war ${TOMCAT_WEBAPP_DIR}/'"
+                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
                     }
                 }
             }

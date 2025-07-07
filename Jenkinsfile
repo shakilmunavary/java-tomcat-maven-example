@@ -5,9 +5,8 @@ pipeline {
         ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         BRANCH = 'master'
-        TARGET_ENV = 'AWS EC2'
-        TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapps'
-        WAR_FILE = 'java-tomcat-maven-example.war'
+        TARGET_ENV = 'AWS ECS'
+        ADDITIONAL_INPUTS = 'Testing Purpose'
     }
     stages {
         stage('Code Checkout') {
@@ -40,16 +39,13 @@ pipeline {
         stage('Deployment') {
             steps {
                 script {
-                    if (env.TARGET_ENV == 'AWS EC2') {
-                        sh "sudo cp target/${WAR_FILE} ${TOMCAT_WEBAPP_DIR}"
+                    if (env.TARGET_ENV == 'AWS ECS') {
+                        // Deployment steps for AWS ECS
+                    } else if (env.TARGET_ENV == 'AWS EC2') {
+                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
                     }
                 }
             }
-        }
-    }
-    post {
-        always {
-            echo 'Pipeline completed'
         }
     }
 }

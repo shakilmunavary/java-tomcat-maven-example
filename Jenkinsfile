@@ -1,21 +1,18 @@
 pipeline {
     agent any
     environment {
-        APP_NAME = 'LMNOP'
+        APP_NAME = 'Testing'
         ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         BRANCH = 'master'
-        JFROG_URL = 'http://your-jfrog-url'
-        JFROG_CREDENTIALS_ID = 'your-jfrog-credentials-id'
-        SONAR_URL = 'http://your-sonar-url'
-        SONAR_TOKEN = 'your-sonar-token'
-        AWS_EC2_INSTANCE = 'your-ec2-instance'
-        AWS_EC2_CREDENTIALS_ID = 'your-ec2-credentials-id'
+        TARGET_ENV = 'AWS EC2'
+        TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapps'
+        WAR_FILE = 'java-tomcat-maven-example.war'
     }
     stages {
         stage('Code Checkout') {
             steps {
-                git branch: "${BRANCH}", url: "${REPO_URL}"
+                git url: "${REPO_URL}", branch: "${BRANCH}"
             }
         }
         stage('Build') {
@@ -43,11 +40,16 @@ pipeline {
         stage('Deployment') {
             steps {
                 script {
-                    if (ENVIRONMENT == 'Dev') {
-                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                    if (env.TARGET_ENV == 'AWS EC2') {
+                        sh "sudo cp target/${WAR_FILE} ${TOMCAT_WEBAPP_DIR}"
                     }
                 }
             }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline completed'
         }
     }
 }

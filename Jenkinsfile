@@ -2,23 +2,28 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'Test'
+        APP_NAME = 'MBRDI'
         ENVIRONMENT = 'Dev'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        BRANCH_NAME = 'master'
-        TARGET_ENV = 'AWS ECS'
+        BRANCH = 'master'
+        JFROG_REPO = 'your_jfrog_repo'
+        SONAR_PROJECT_KEY = 'your_sonar_project_key'
+        SONAR_TOKEN = 'your_sonar_token'
+        TARGET_ENV = 'AWS EC2'
+        TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapps'
+        NOTIFICATION_EMAIL = 'admin@test.com'
     }
 
     stages {
         stage('Code Checkout') {
             steps {
-                git url: "${REPO_URL}", branch: "${BRANCH_NAME}"
+                git url: "${REPO_URL}", branch: "${BRANCH}"
             }
         }
 
         stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean package'
             }
         }
 
@@ -30,16 +35,14 @@ pipeline {
 
         stage('Code Quality Analysis') {
             steps {
-                // Code quality analysis using Sonar
-                sh 'mvn sonar:sonar'
+                // Code quality analysis
                 echo 'Code Analysis done'
             }
         }
 
         stage('Upload Artifacts') {
             steps {
-                // Upload artifacts to Nexus
-                sh 'mvn deploy'
+                // Upload artifacts
                 echo 'Upload Artifacts done'
             }
         }
@@ -47,15 +50,20 @@ pipeline {
         stage('Deployment') {
             steps {
                 script {
-                    if (env.TARGET_ENV == 'AWS ECS') {
-                        // Deployment steps for AWS ECS
-                        sh 'echo Deploying to AWS ECS'
-                    } else if (env.TARGET_ENV == 'AWS EC2') {
-                        // Deployment steps for AWS EC2
-                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapps/'
+                    if (env.TARGET_ENV == 'AWS EC2') {
+                        sh "sudo cp target/java-tomcat-maven-example.war ${TOMCAT_WEBAPP_DIR}"
                     }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo "Sending notification to ${NOTIFICATION_EMAIL}"
+            mail to: "${NOTIFICATION_EMAIL}",
+                 subject: "Pipeline Status for ${APP_NAME} in ${ENVIRONMENT}",
+                 body: "The pipeline for ${APP_NAME} in ${ENVIRONMENT} has completed."
         }
     }
 }

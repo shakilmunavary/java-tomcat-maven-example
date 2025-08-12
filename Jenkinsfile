@@ -22,14 +22,14 @@ pipeline {
 
         stage('Code Quality Analysis') {
             steps {
-                // Code Quality Analysis steps
+                // Code Quality Analysis
                 echo 'Code Analysis done'
             }
         }
 
         stage('Upload Artifacts') {
             steps {
-                // Upload Artifacts steps
+                // Upload Artifacts
                 echo 'Upload Artifacts done'
             }
         }

@@ -2,14 +2,13 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'dadas'
+        APP_NAME = 'KLMPP'
         ENVIRONMENT = 'Dev'
         GIT_REPO = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         BRANCH = 'master'
         JFROG_REPO = 'jfrog-repo-url' // Replace with actual JFrog repository URL
         SONAR_SERVER = 'sonar-server-url' // Replace with actual SonarQube server URL
-        AWS_EC2_IP = 'ec2-instance-ip' // Replace with actual EC2 instance IP
-        AWS_EC2_USER = 'ec2-user' // Replace with actual EC2 user
+        AWS_EC2_IP = 'ec2-instance-ip' // Replace with actual AWS EC2 instance IP
         TOMCAT_WEBAPP_DIR = '/opt/tomcat/webapp'
     }
 
@@ -39,7 +38,10 @@ pipeline {
             steps {
                 // echo "Running SonarQube analysis..."
                 // withSonarQubeEnv('SonarQube') {
-                //     sh 'mvn sonar:sonar -Dsonar.host.url=${SONAR_SERVER}'
+                //     sh "mvn sonar:sonar \
+                //         -Dsonar.projectKey=${APP_NAME} \
+                //         -Dsonar.projectName=${APP_NAME} \
+                //         -Dsonar.host.url=${SONAR_SERVER}"
                 // }
                 echo "Code Analysis done"
             }
@@ -53,8 +55,10 @@ pipeline {
                 //     spec: """{
                 //         "files": [
                 //             {
-                //                 "pattern": "target/java-tomcat-maven-example.war",
-                //                 "target": "${JFROG_REPO}/${APP_NAME}/"
+                //                 "target": "${JFROG_REPO}/${APP_NAME}/${ENVIRONMENT}/",
+                //                 "pattern": "target/*.war",
+                //                 "recursive": "false",
+                //                 "flat": "true"
                 //             }
                 //         ]
                 //     }"""
@@ -67,11 +71,11 @@ pipeline {
             steps {
                 echo "Deploying to AWS EC2..."
                 script {
-                    sshagent(['ec2-ssh-key']) {
+                    if ("${ENVIRONMENT}" == "Dev" && "${TOMCAT_WEBAPP_DIR}" != "") {
                         sh """
-                            scp -o StrictHostKeyChecking=no target/java-tomcat-maven-example.war ${AWS_EC2_USER}@${AWS_EC2_IP}:/tmp/
-                            ssh -o StrictHostKeyChecking=no ${AWS_EC2_USER}@${AWS_EC2_IP} \
-                            "sudo mv /tmp/java-tomcat-maven-example.war ${TOMCAT_WEBAPP_DIR}/ && sudo systemctl restart tomcat"
+                            scp -o StrictHostKeyChecking=no target/java-tomcat-maven-example.war ec2-user@${AWS_EC2_IP}:/tmp/
+                            ssh -o StrictHostKeyChecking=no ec2-user@${AWS_EC2_IP} \
+                            "sudo mv /tmp/java-tomcat-maven-example.war ${TOMCAT_WEBAPP_DIR}/"
                         """
                     }
                 }
@@ -81,7 +85,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline completed for ${APP_NAME} in ${ENVIRONMENT} environment."
+            echo "Pipeline completed."
         }
     }
 }

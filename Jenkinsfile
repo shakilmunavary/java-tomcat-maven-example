@@ -2,90 +2,64 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'Roshanapp'
+        APPLICATION_NAME = 'XYZ'
         ENVIRONMENT = 'Dev'
-        GIT_REPO = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        CI_CD_TOOL = 'Jenkins'
+        VERSION_CONTROL = 'Github'
+        REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        FILE_REPO = 'Jfrog'
+        TECH_STACK = 'Java'
+        CODE_ANALYSIS_TOOL = 'Sonar'
+        TARGET_ENV = 'AWS EC2'
         BRANCH = 'master'
-        JFROG_REPO = 'jfrog-repo-url' // Replace with actual JFrog repository URL
-        SONAR_SCANNER = 'sonar-scanner' // Ensure Sonar Scanner is installed and configured
-        AWS_EC2_IP = 'your-ec2-ip' // Replace with actual EC2 IP
-        AWS_EC2_USER = 'ec2-user' // Replace with actual EC2 user
-        AWS_EC2_KEY = 'your-ec2-key.pem' // Replace with actual EC2 key file
     }
 
     stages {
         stage('Code Checkout') {
             steps {
-                echo "Checking out code from GitHub..."
-                git branch: "${BRANCH}",
-                    url: "${GIT_REPO}"
+                echo 'Checking out code from Github repository'
+                git branch: "${BRANCH}", url: "${REPO_URL}"
             }
         }
 
         stage('Build') {
             steps {
-                echo "Building the application..."
-                sh 'mvn clean package'
+                echo 'Building the application using Maven'
+                sh 'mvn clean install'
             }
         }
 
         stage('Unit Testing') {
             steps {
-                echo "Running unit tests..."
+                echo 'Running Unit Tests'
                 sh 'mvn test'
             }
         }
 
         stage('Code Quality Analysis') {
             steps {
-                echo "Running SonarQube analysis..."
-                // script {
-                //     withSonarQubeEnv('SonarQube-Server') {
-                //         sh "${SONAR_SCANNER} -Dsonar.projectKey=${APP_NAME} -Dsonar.sources=. -Dsonar.host.url=${SONAR_HOST_URL}"
-                //     }
-                // }
-                echo "Code Analysis done"
+                echo 'Analyzing code quality using SonarQube'
+                // Add the actual Sonar analysis command below
+                echo 'Code Analysis done'
             }
         }
 
         stage('Upload Artifacts') {
             steps {
-                echo "Uploading artifacts to JFrog..."
-                // script {
-                //     def server = Artifactory.server 'jfrog-server'
-                //     def uploadSpec = """{
-                //         "files": [
-                //             {
-                //                 "pattern": "target/*.war",
-                //                 "target": "${JFROG_REPO}/${APP_NAME}/${ENVIRONMENT}/"
-                //             }
-                //         ]
-                //     }"""
-                //     server.upload(uploadSpec)
-                // }
-                echo "Upload Artifacts done"
+                echo 'Uploading artifacts to Jfrog'
+                // Add the actual Jfrog upload command below
+                echo 'Upload Artifacts done'
             }
         }
 
         stage('Deployment') {
-            steps {
-                echo "Deploying to AWS EC2..."
-                script {
-                    sshagent (['your-ssh-credentials-id']) {
-                        sh """
-                            scp -o StrictHostKeyChecking=no target/java-tomcat-maven-example.war ${AWS_EC2_USER}@${AWS_EC2_IP}:/tmp/
-                            ssh -o StrictHostKeyChecking=no ${AWS_EC2_USER}@${AWS_EC2_IP} \
-                            "sudo mv /tmp/java-tomcat-maven-example.war /opt/tomcat/webapps/"
-                        """
-                    }
-                }
+            when {
+                expression { "${TARGET_ENV}" == "AWS EC2" }
             }
-        }
-    }
-
-    post {
-        always {
-            echo "Pipeline completed for ${APP_NAME} in ${ENVIRONMENT} environment."
+            steps {
+                echo 'Deploying application to AWS EC2'
+                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapp/'
+            }
         }
     }
 }

@@ -1,20 +1,15 @@
 pipeline {
     agent any
     environment {
-        APPLICATION_NAME = 'Roshanapplication'
+        APPLICATION_NAME = 'Firstapplication'
         ENVIRONMENT = 'Dev'
-        CI_CD_TOOL = 'Jenkins'
-        VCS = 'Github'
         REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        FILE_REPO_SYSTEM = 'Jfrog'
-        TECH_STACK = 'Java'
-        CODE_ANALYSIS_TOOL = 'Sonar'
         TARGET_ENV = 'AWS EC2'
     }
     stages {
         stage('Code Checkout') {
             steps {
-                echo 'Checking out code from Github...'
+                echo 'Checking out code from GitHub repository...'
                 git branch: 'master', url: "${REPO_URL}"
             }
         }
@@ -32,26 +27,35 @@ pipeline {
         }
         stage('Code Quality Analysis') {
             steps {
-                // Perform code analysis using Sonar
+                echo 'Performing code quality analysis...'
+                // Run SonarQube analysis here
                 echo 'Code Analysis done'
             }
         }
         stage('Upload Artifacts') {
             steps {
-                // Upload artifacts to Jfrog
+                echo 'Uploading artifacts to Jfrog...'
+                // Add Jfrog CLI commands to upload artifacts
                 echo 'Upload Artifacts done'
             }
         }
         stage('Deployment') {
             steps {
-                echo 'Deploying the application to AWS EC2...'
-                sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapp/'
+                script {
+                    if ("${TARGET_ENV}" == 'AWS EC2') {
+                        echo 'Deploying application to AWS EC2...'
+                        sh 'sudo cp target/java-tomcat-maven-example.war /opt/tomcat/webapp/'
+                    }
+                }
             }
         }
     }
     post {
-        always {
-            echo "Pipeline execution completed for ${APPLICATION_NAME} in ${ENVIRONMENT} environment."
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check the logs.'
         }
     }
 }

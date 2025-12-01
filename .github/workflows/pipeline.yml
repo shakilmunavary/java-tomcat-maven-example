@@ -1,0 +1,49 @@
+name: Nike Run App Pipeline - Dev
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  pipeline:
+    name: Nike Run App CI/CD Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      # Code Checkout Stage
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          repository: https://github.com/shakilmunavary/java-tomcat-maven-example.git
+          ref: master
+
+      # Build Stage
+      - name: Build Application
+        run: |
+          mvn clean package
+
+      # Unit Testing Stage
+      - name: Run Unit Tests
+        run: |
+          mvn test
+
+      # Code Quality Analysis Stage
+      - name: Code Quality Analysis
+        run: |
+          # Analyze code quality using Sonar
+          sonar-scanner
+          echo "Code Analysis done"
+
+      # Upload Artifacts Stage
+      - name: Upload Artifacts
+        run: |
+          # Upload artifacts to JFrog
+          curl -u <username>:<password> -T target/java-tomcat-maven-example.war https://<jfrog_url>/artifactory/<repo-name>/java-tomcat-maven-example.war
+          echo "Upload Artifacts done"
+
+      # Deployment Stage
+      - name: Deployment to AWS EC2
+        run: |
+          scp -i <path-to-key> target/java-tomcat-maven-example.war <ec2-user>@<ec2-instance-ip>:/opt/tomcat/webapp/
+          ssh -i <path-to-key> <ec2-user>@<ec2-instance-ip> "sudo cp /opt/tomcat/webapp/java-tomcat-maven-example.war /opt/tomcat/webapp/"

@@ -6,7 +6,7 @@ pipeline {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         DEFAULT_BRANCH = 'main'
         // Replace with your Jenkins credentialsId for git checkout
-        CHECKOUT_CRED_ID = 'your-checkout-credentials-id'
+        CHECKOUT_CRED_ID = 'GitHubApiKey'
 
         // Placeholders for integration endpoints / repos (set in Jenkins global env or replace with proper values)
         SONAR_HOST_URL = ''        // e.g. https://sonarqube.example.com
@@ -14,8 +14,8 @@ pipeline {
         NEXUS_REPO     = 'nexus-release-repo' // repository name/path in Nexus where .jar should be uploaded
 
         // App placeholders
-        APP_NAME       = 'appName'
-        SONAR_PROJECT_KEY = 'sonarProjectKey'
+        APP_NAME       = 'SimpleApplication'
+        SONAR_PROJECT_KEY = 'simple-java-maven-app'
     }
 
     options {

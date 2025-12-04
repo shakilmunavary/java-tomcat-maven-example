@@ -54,8 +54,7 @@ pipeline {
         }
         stage('static-scan') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'SONAR-AI-1', passwordVariable: 'SONAR_PASSWORD', usernameVariable: 'SONAR_USER')]) {
-                    ansiColor('xterm') {
+                ansiColor('xterm') {
                         withSonarQubeEnv('Mysonar') {
                             sh '''
                                 mvn -B -U verify sonar:sonar \

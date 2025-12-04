@@ -61,9 +61,7 @@ pipeline {
 
         stage('unit-tests') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B test'
-                }
+                          sh 'mvn -B test'
                 // Publish JUnit results
                 junit allowEmptyResults: false, testResults: '**/target/surefire-reports/*.xml'
             }
@@ -73,7 +71,7 @@ pipeline {
             steps {
                 // SonarQube token should be stored in Jenkins Credentials (string). Replace 'sonar-token-id' with your credentialsId.
                 withCredentials([string(credentialsId: 'sonar-token-id', variable: 'SONAR_TOKEN')]) {
-                    ansiColor('xterm') {
+                   
                         // Run Sonar analysis. Ensure SONAR_HOST_URL is set in environment or global config.
                         sh """
                             mvn sonar:sonar \
@@ -81,7 +79,7 @@ pipeline {
                               -Dsonar.host.url=${env.SONAR_HOST_URL} \
                               -Dsonar.login=${SONAR_TOKEN}
                         """
-                    }
+                    
                 }
 
                 // Wait for quality gate result and fail pipeline on non-OK
@@ -106,7 +104,7 @@ pipeline {
                 // Upload artifact (.jar) to Nexus release repo
                 // Use credentials stored in Jenkins (usernamePassword). Replace 'nexus-credentials-id' with your credentialsId.
                 withCredentials([usernamePassword(credentialsId: 'nexus-credentials-id', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
-                    ansiColor('xterm') {
+                    
                         script {
                             // Find the jar (simple glob). Adjust if multiple jars are produced.
                             def jar = sh(script: "ls target/*.jar | head -n 1", returnStdout: true).trim()
@@ -123,7 +121,7 @@ pipeline {
                                   "${env.NEXUS_URL}/repository/${env.NEXUS_REPO}/\$(basename ${jar})"
                             """
                         }
-                    }
+                    
                 }
             }
         }

@@ -56,7 +56,7 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'SONAR-AI-1', passwordVariable: 'SONAR_PASSWORD', usernameVariable: 'SONAR_USER')]) {
                     ansiColor('xterm') {
-                        withSonarQubeEnv('SonarQube Server') {
+                        withSonarQubeEnv('Mysonar') {
                             sh '''
                                 mvn -B -U verify sonar:sonar \
                                     -Dsonar.host.url=$SONAR_HOST_URL \

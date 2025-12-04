@@ -55,7 +55,7 @@ pipeline {
         stage('static-scan') {
             steps {
                 ansiColor('xterm') {
-                        withSonarQubeEnv('Mysonar') {
+                        withSonarQubeEnv('Mysonar')     {
                             sh '''
                                 mvn -B -U verify sonar:sonar \
                                     -Dsonar.host.url=$SONAR_HOST_URL \
@@ -64,12 +64,11 @@ pipeline {
                             '''
                         }
                     }
-                }
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
-        
+        }
         stage('package-artifact') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'nexus-credentials-id', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {

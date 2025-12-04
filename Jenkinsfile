@@ -70,17 +70,9 @@ pipeline {
         stage('static-scan') {
             steps {
                 // SonarQube token should be stored in Jenkins Credentials (string). Replace 'sonar-token-id' with your credentialsId.
-                withCredentials([string(credentialsId: 'New-SonarToken')]) {
-                   
-                        // Run Sonar analysis. Ensure SONAR_HOST_URL is set in environment or global config.
-                        sh """
-                            mvn sonar:sonar \
-                              -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
-                              -Dsonar.host.url=${env.SONAR_HOST_URL} \
-                              
-                        """
-                    
-                }
+            withSonarQubeEnv() {
+                  sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=simple-java-maven-app -Dsonar.projectName='simple-java-maven-app'"
+            }
 
                 // Wait for quality gate result and fail pipeline on non-OK
                 script {

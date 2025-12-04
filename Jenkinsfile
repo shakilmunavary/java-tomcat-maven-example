@@ -54,7 +54,7 @@ pipeline {
         }
         stage('static-scan') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR-AI')]) {
+                withCredentials([usernamePassword(credentialsId: 'SONAR-AI-1', passwordVariable: 'SONAR_PASSWORD', usernameVariable: 'SONAR_USER')]) {
                     ansiColor('xterm') {
                         withSonarQubeEnv('SonarQube Server') {
                             sh '''

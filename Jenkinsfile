@@ -55,10 +55,8 @@ pipeline {
 
         stage('build') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B -U clean package -DskipTests=false'
-                }
-            }
+                                    sh 'mvn -B -U clean package -DskipTests=false'
+                  }
         }
 
         stage('unit-tests') {

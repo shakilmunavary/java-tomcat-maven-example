@@ -47,9 +47,7 @@ pipeline {
             steps {
                 script {
                     // Dedicated checkout per requirement
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
-                        userRemoteConfigs: [[url: "${env.CODE_REPO_URL}", credentialsId: env.CHECKOUT_CRED_ID]]
+                  checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'Roshan-Github', url: 'https://github.com/shakilmunavary/java-tomcat-maven-example.git']])
                     ])
                 }
             }

@@ -9,7 +9,7 @@ pipeline {
         CHECKOUT_CRED_ID = 'Roshan-Github'
 
         // Placeholders for integration endpoints / repos (set in Jenkins global env or replace with proper values)
-        SONAR_HOST_URL = ''        // e.g. https://sonarqube.example.com
+        SONAR_HOST_URL = 'http://10.0.3.123:9000'        // e.g. https://sonarqube.example.com
         NEXUS_URL      = ''        // e.g. https://nexus.example.com
         NEXUS_REPO     = 'nexus-release-repo' // repository name/path in Nexus where .jar should be uploaded
 
@@ -70,14 +70,14 @@ pipeline {
         stage('static-scan') {
             steps {
                 // SonarQube token should be stored in Jenkins Credentials (string). Replace 'sonar-token-id' with your credentialsId.
-                withCredentials([string(credentialsId: 'sonar-token-id', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: 'New-SonarToken')]) {
                    
                         // Run Sonar analysis. Ensure SONAR_HOST_URL is set in environment or global config.
                         sh """
                             mvn sonar:sonar \
                               -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
                               -Dsonar.host.url=${env.SONAR_HOST_URL} \
-                              -Dsonar.login=${SONAR_TOKEN}
+                              
                         """
                     
                 }

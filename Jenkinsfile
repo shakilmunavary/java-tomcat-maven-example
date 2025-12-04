@@ -69,7 +69,7 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
-        }
+        
         stage('package-artifact') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'nexus-credentials-id', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {

@@ -10,7 +10,7 @@ pipeline {
     }
     environment {
         CODE_REPO_URL       = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH      = 'main'
+        DEFAULT_BRANCH      = 'master'
         CHECKOUT_CRED_ID    = 'Roshan-Github'
         SONAR_HOST_URL      = 'http://10.0.3.123:9000'
         NEXUS_URL           = 'https://nexus.example.com'

@@ -6,7 +6,7 @@ pipeline {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         DEFAULT_BRANCH = 'main'
         // Replace with your Jenkins credentialsId for git checkout
-        CHECKOUT_CRED_ID = 'GitHubApiKey'
+        CHECKOUT_CRED_ID = 'Roshan-Github'
 
         // Placeholders for integration endpoints / repos (set in Jenkins global env or replace with proper values)
         SONAR_HOST_URL = ''        // e.g. https://sonarqube.example.com

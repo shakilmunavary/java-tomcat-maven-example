@@ -59,7 +59,7 @@ pipeline {
                             sh '''
                                 mvn -B -U verify sonar:sonar \
                                     -Dsonar.host.url=$SONAR_HOST_URL \
-                                    -Dsonar.login=squ_c420c1867277e49dcf26ddd3dff8f1267a7f61e4 \
+                                    -Dsonar.login=sqa_12df9b05ab91c84c0c2f8d24fa83dbe4fcd8498c \
                                     -Dsonar.projectKey=simple-java-maven-app
                             '''
                         }

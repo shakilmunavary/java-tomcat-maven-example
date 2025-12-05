@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     options {
@@ -15,6 +16,7 @@ pipeline {
         SONAR_HOST_URL      = 'http://10.0.3.123:9000/sonar/'
         NEXUS_URL           = 'https://nexus.example.com'
         NEXUS_RELEASE_REPO  = 'maven-snapshots'
+        SKIP_QUALITY_GATE   = 'true' // set to 'true' to skip, 'false' to enforce
     }
     stages {
         stage('checkout') {
@@ -56,15 +58,22 @@ pipeline {
             steps {
                 ansiColor('xterm') {
                     withSonarQubeEnv('Mysonar') {
-                    sh '''
-                                mvn -B -U verify sonar:sonar \
-                                    -Dsonar.host.url=$SONAR_HOST_URL \
-                                    -Dsonar.login=sqa_12df9b05ab91c84c0c2f8d24fa83dbe4fcd8498c \
-                                    -Dsonar.projectKey=simple-java-maven-app
-                            '''
-                    } }
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                        sh '''
+                            mvn -B -U verify sonar:sonar \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.login=sqa_12df9b05ab91c84c0c2f8d24fa83dbe4fcd8498c \
+                                -Dsonar.projectKey=simple-java-maven-app
+                        '''
+                    }
+                }
+                script {
+                    if (env.SKIP_QUALITY_GATE == 'true') {
+                        echo 'SKIP_QUALITY_GATE=true -> Skipping waitForQualityGate'
+                    } else {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
                 }
             }
         }

@@ -1,11 +1,5 @@
 pipeline {
     agent any
-    environment {
-        CODE_REPO_URL     = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH    = 'master'
-        CHECKOUT_CRED_ID  = 'Roshan-Github'
-        SONAR_HOST_URL    = 'http://10.0.3.123:9000/sonar/'
-    }
     options {
         timestamps()
         disableConcurrentBuilds()
@@ -13,21 +7,32 @@ pipeline {
     triggers {
         pollSCM('H/5 * * * *')
     }
+    environment {
+        CODE_REPO_URL      = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH     = 'master'
+        CHECKOUT_CRED_ID   = 'Roshan-Github'
+        SONAR_HOST_URL     = 'http://10.0.3.123:9000/sonar/'
+        SONAR_TOKEN        = credentials('sonar-token')
+        SKIP_QUALITY_GATE  = 'true'
+    }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error('CODE_REPO_URL is required for the pipeline to run.')
+                        error 'CODE_REPO_URL is required to proceed with the pipeline.'
                     }
                 }
                 checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
+                    $class           : 'GitSCM',
+                    branches         : [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CleanCheckout']],
+                    extensions       : [
+                        [$class: 'CleanCheckout'],
+                        [$class: 'WipeWorkspace']
+                    ],
                     userRemoteConfigs: [[
-                        url: env.CODE_REPO_URL,
+                        url          : "${env.CODE_REPO_URL}",
                         credentialsId: env.CHECKOUT_CRED_ID
                     ]]
                 ])
@@ -54,18 +59,14 @@ pipeline {
             }
             steps {
                 withSonarQubeEnv('Mysonar') {
-                    withEnv([
-                        "SKIP_QUALITY_GATE=${env.SKIP_QUALITY_GATE}",
-                        "SONAR_HOST_URL=${env.SONAR_HOST_URL}"
-                    ]) {
-                        ansiColor('xterm') {
-                            sh """
-                                mvn -B sonar:sonar \
-                                    -Dsonar.host.url=$SONAR_HOST_URL \
-                                    -Dsonar.projectKey=appName \
-                                    -Dsonar.qualitygate.wait=false
-                            """
-                        }
+                    ansiColor('xterm') {
+                        sh """
+                            mvn -B sonar:sonar \
+                              -Dsonar.host.url=${SONAR_HOST_URL} \
+                              -Dsonar.projectKey=java-tomcat-maven-example \
+                              -Dsonar.login=${SONAR_TOKEN} \
+                              -Dsonar.qualitygate.wait=false
+                        """
                     }
                 }
             }

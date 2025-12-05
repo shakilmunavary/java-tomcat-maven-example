@@ -1,62 +1,59 @@
 pipeline {
     agent any
     options {
-        disableConcurrentBuilds()
+        skipDefaultCheckout()
         timestamps()
-        skipDefaultCheckout(true)
     }
     environment {
-        CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH = 'master'
-        CHECKOUT_CRED_ID = 'Roshan-Github'
-        SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
+        CODE_REPO_URL     = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH    = 'master'
+        CHECKOUT_CRED_ID  = 'Roshan-Github'
+        SONAR_HOST_URL    = 'http://10.0.3.123:9000/sonar/'
+        SKIP_QUALITY_GATE = 'true'
     }
     triggers {
-        pollSCM('H/5 * * * *')
-        // To enable GitHub/GitLab webhooks, configure the SCM webhook and uncomment the relevant trigger
+        pollSCM('H/15 * * * *')
     }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error 'CODE_REPO_URL environment variable must be provided.'
+                        error('CODE_REPO_URL must be supplied for the pipeline to proceed.')
                     }
                 }
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CleanCheckout']],
-                    userRemoteConfigs: [[
-                        url: env.CODE_REPO_URL,
-                        credentialsId: env.CHECKOUT_CRED_ID
-                    ]]
-                ])
+                git branch: "${env.DEFAULT_BRANCH}",
+                    credentialsId: env.CHECKOUT_CRED_ID,
+                    url: env.CODE_REPO_URL
             }
         }
         stage('build') {
             steps {
-                sh 'mvn -B -U clean package -DskipTests=false'
+                ansiColor('xterm') {
+                    sh 'mvn -B -U clean package -DskipTests=false'
+                }
             }
         }
         stage('unit-tests') {
             steps {
-                sh 'mvn -B test'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
+                ansiColor('xterm') {
+                    sh 'mvn -B test'
                 }
+                junit '**/target/surefire-reports/*.xml'
             }
         }
         stage('static-scan') {
-            environment {
-                SKIP_QUALITY_GATE = 'true'
-            }
             steps {
                 withSonarQubeEnv('Mysonar') {
-                    sh "mvn -B sonar:sonar -Dsonar.host.url=${env.SONAR_HOST_URL}"
+                    ansiColor('xterm') {
+                        sh """mvn -B sonar:sonar \
+                            -Dsonar.projectKey=java-tomcat-maven-example \
+                            -Dsonar.projectName=java-tomcat-maven-example \
+                            -Dsonar.host.url=${env.SONAR_HOST_URL} \
+                            -DskipTests=true \
+                            -DskipQualityGate=${env.SKIP_QUALITY_GATE}
+                        """
+                    }
                 }
             }
         }

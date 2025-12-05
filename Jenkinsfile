@@ -1,7 +1,7 @@
-```groovy
 pipeline {
     agent any
     options {
+        skipDefaultCheckout(true)
         timestamps()
         disableConcurrentBuilds()
     }
@@ -10,26 +10,26 @@ pipeline {
         DEFAULT_BRANCH = 'master'
         CHECKOUT_CRED_ID = 'Roshan-Github'
         SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
-        SONAR_ENVIRONMENT = 'Mysonar'
-        SKIP_QUALITY_GATE = 'true'
     }
     triggers {
-        // Use webhook or polling as needed
         pollSCM('H/5 * * * *')
+        // For Git webhooks, configure in Jenkins job instead of here.
     }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error 'CODE_REPO_URL is required'
+                        error('CODE_REPO_URL environment variable is required')
                     }
                 }
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
+                    extensions: [
+                        [$class: 'CleanBeforeCheckout']
+                    ],
                     userRemoteConfigs: [
                         [
                             url: env.CODE_REPO_URL,
@@ -41,33 +41,27 @@ pipeline {
         }
         stage('build') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B -U clean package -DskipTests=false'
-                }
+                sh 'mvn -B -U clean package -DskipTests=false'
             }
         }
         stage('unit-tests') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B test'
-                }
-                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                sh 'mvn -B test'
+                junit 'target/surefire-reports/*.xml'
             }
         }
         stage('static-scan') {
             environment {
-                SONAR_ENV = "${env.SONAR_ENVIRONMENT}"
-                SKIP_QG = "${env.SKIP_QUALITY_GATE}"
+                SKIP_QUALITY_GATE = 'true'
             }
             steps {
-                withSonarQubeEnv(env.SONAR_ENVIRONMENT) {
-                    ansiColor('xterm') {
-                        sh '''
-                            mvn -B sonar:sonar \
-                                -Dsonar.host.url=${SONAR_HOST_URL} \
-                                -Dsonar.projectKey=sonarProjectKey \
-                                -Dsonar.qualitygate.wait=false
-                        '''
+                withSonarQubeEnv('Mysonar') {
+                    sh 'mvn -B sonar:sonar -Dsonar.host.url=${SONAR_HOST_URL}'
+                }
+                script {
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        error("SonarQube Quality Gate failed: ${qg.status}")
                     }
                 }
             }
@@ -80,4 +74,3 @@ pipeline {
         }
     }
 }
-[CICD_CODE_GENERATION_COMPLETE]

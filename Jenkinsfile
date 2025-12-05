@@ -55,7 +55,7 @@ pipeline {
         stage('static-scan') {
             steps {
                 ansiColor('xterm') {
-                    withSonarQubeEnv('SonarQube Server') {
+                    withSonarQubeEnv('Mysonar') {
                     sh '''
                                 mvn -B -U verify sonar:sonar \
                                     -Dsonar.host.url=$SONAR_HOST_URL \

@@ -1,37 +1,33 @@
-
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
-        timestamps()
         disableConcurrentBuilds()
-    }
-    triggers {
-        pollSCM('H/15 * * * *') // replace with SCM webhook trigger if available
+        timestamps()
+        skipDefaultCheckout(true)
     }
     environment {
-        CODE_REPO_URL       = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH      = 'master'
-        CHECKOUT_CRED_ID    = 'Roshan-Github'
-        SONAR_HOST_URL      = 'http://10.0.3.123:9000/sonar/'
-        NEXUS_URL           = 'https://nexus.example.com'
-        NEXUS_RELEASE_REPO  = 'maven-snapshots'
-        SKIP_QUALITY_GATE   = 'true' // set to 'true' to skip, 'false' to enforce
+        CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH = 'master'
+        CHECKOUT_CRED_ID = 'Roshan-Github'
+        SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
+    }
+    triggers {
+        pollSCM('H/5 * * * *')
+        // To enable GitHub/GitLab webhooks, configure the SCM webhook and uncomment the relevant trigger
     }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error('CODE_REPO_URL is required to proceed with the pipeline')
+                        error 'CODE_REPO_URL environment variable must be provided.'
                     }
                 }
-                deleteDir()
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: env.DEFAULT_BRANCH]],
+                    branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CloneOption', shallow: false, depth: 0, noTags: false]],
+                    extensions: [[$class: 'CleanCheckout']],
                     userRemoteConfigs: [[
                         url: env.CODE_REPO_URL,
                         credentialsId: env.CHECKOUT_CRED_ID
@@ -41,56 +37,26 @@ pipeline {
         }
         stage('build') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B -U clean package -DskipTests=false'
-                }
+                sh 'mvn -B -U clean package -DskipTests=false'
             }
         }
         stage('unit-tests') {
             steps {
-                ansiColor('xterm') {
-                    sh 'mvn -B test'
+                sh 'mvn -B test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
                 }
-                junit allowEmptyResults: false, testResults: '**/target/surefire-reports/*.xml'
             }
         }
         stage('static-scan') {
-            steps {
-                ansiColor('xterm') {
-                    withSonarQubeEnv('Mysonar') {
-                        sh '''
-                            mvn -B -U verify sonar:sonar \
-                                -Dsonar.host.url=$SONAR_HOST_URL \
-                                -Dsonar.login=sqa_12df9b05ab91c84c0c2f8d24fa83dbe4fcd8498c \
-                                -Dsonar.projectKey=simple-java-maven-app
-                        '''
-                    }
-                }
-                script {
-                    if (env.SKIP_QUALITY_GATE == 'true') {
-                        echo 'SKIP_QUALITY_GATE=true -> Skipping waitForQualityGate'
-                    } 
-                    
-                }
+            environment {
+                SKIP_QUALITY_GATE = 'true'
             }
-        }
-        stage('package-artifact') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'nexus-credentials-id', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
-                    script {
-                        def jarFile = sh(script: "ls target/*.jar | head -n 1", returnStdout: true).trim()
-                        if (!jarFile) {
-                            error('No JAR artifact found in target directory to publish')
-                        }
-                        def jarName = jarFile.tokenize('/').last()
-                        ansiColor('xterm') {
-                            sh """
-                                curl --fail -u $NEXUS_USER:$NEXUS_PASSWORD \
-                                    -T ${jarFile} \
-                                    ${NEXUS_URL}/repository/${NEXUS_RELEASE_REPO}/${env.BUILD_ID}/${jarName}
-                            """
-                        }
-                    }
+                withSonarQubeEnv('Mysonar') {
+                    sh "mvn -B sonar:sonar -Dsonar.host.url=${env.SONAR_HOST_URL}"
                 }
             }
         }

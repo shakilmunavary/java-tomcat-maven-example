@@ -55,13 +55,14 @@ pipeline {
         stage('static-scan') {
             steps {
                 ansiColor('xterm') {
-                          sh '''
+                    withSonarQubeEnv('SonarQube Server') {
+                    sh '''
                                 mvn -B -U verify sonar:sonar \
                                     -Dsonar.host.url=$SONAR_HOST_URL \
                                     -Dsonar.login=sqa_12df9b05ab91c84c0c2f8d24fa83dbe4fcd8498c \
                                     -Dsonar.projectKey=simple-java-maven-app
                             '''
-                                            }
+                    } }
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }

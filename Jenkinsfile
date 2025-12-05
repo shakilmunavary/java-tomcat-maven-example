@@ -70,7 +70,7 @@ pipeline {
                     if (env.SKIP_QUALITY_GATE == 'true') {
                         echo 'SKIP_QUALITY_GATE=true -> Skipping waitForQualityGate'
                     } 
-                    }
+                    
                 }
             }
         }

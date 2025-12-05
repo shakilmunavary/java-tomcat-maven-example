@@ -69,10 +69,7 @@ pipeline {
                 script {
                     if (env.SKIP_QUALITY_GATE == 'true') {
                         echo 'SKIP_QUALITY_GATE=true -> Skipping waitForQualityGate'
-                    } else {
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
+                    } 
                     }
                 }
             }

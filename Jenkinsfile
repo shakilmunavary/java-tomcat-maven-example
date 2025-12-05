@@ -1,9 +1,8 @@
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
-        timestamps()
         disableConcurrentBuilds()
+        timestamps()
     }
     environment {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
@@ -16,17 +15,17 @@ pipeline {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error 'CODE_REPO_URL must be provided for the checkout stage.'
+                        error "CODE_REPO_URL is required to proceed with the pipeline."
                     }
                 }
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
+                    extensions: [[$class: 'CleanBeforeCheckout']],
                     userRemoteConfigs: [[
-                        credentialsId: env.CHECKOUT_CRED_ID,
-                        url: env.CODE_REPO_URL
+                        url: env.CODE_REPO_URL,
+                        credentialsId: env.CHECKOUT_CRED_ID
                     ]]
                 ])
             }
@@ -51,22 +50,20 @@ pipeline {
                 SKIP_QUALITY_GATE = 'true'
             }
             steps {
-                ansiColor('xterm') {
-                    withSonarQubeEnv('Mysonar') {
-                        sh """
-                            mvn -B sonar:sonar \
-                                -Dsonar.projectKey=java-tomcat-maven-example \
-                                -Dsonar.host.url=${env.SONAR_HOST_URL}
-                        """
-                    }
-                }
                 script {
-                    if (env.SKIP_QUALITY_GATE?.toBoolean()) {
-                        echo 'SKIP_QUALITY_GATE=true, skipping waitForQualityGate step.'
-                    } else {
-                        timeout(time: 2, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
+                    ansiColor('xterm') {
+                        withSonarQubeEnv('Mysonar') {
+                            sh '''
+                                mvn -B -DskipTests=true sonar:sonar \
+                                    -Dsonar.projectKey=appName \
+                                    -Dsonar.host.url=${SONAR_HOST_URL}
+                            '''.stripIndent()
                         }
+                    }
+                    if (env.SKIP_QUALITY_GATE?.toBoolean()) {
+                        echo 'Skipping SonarQube quality gate evaluation (SKIP_QUALITY_GATE=true).'
+                    } else {
+                        waitForQualityGate abortPipeline: true
                     }
                 }
             }
@@ -79,3 +76,4 @@ pipeline {
         }
     }
 }
+[CICD_CODE_GENERATION_COMPLETE]

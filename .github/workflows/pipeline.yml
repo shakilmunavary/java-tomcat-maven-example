@@ -1,49 +1,121 @@
-name: Nike Run App Pipeline - Dev
+name: Terraform CI/CD
 
 on:
   push:
     branches:
-      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_INPUT: "false"
+  TF_CLI_ARGS: "-no-color"
 
 jobs:
-  pipeline:
-    name: Nike Run App CI/CD Pipeline
+  plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
-
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
     steps:
-      # Code Checkout Stage
-      - name: Checkout Code
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Terraform modules
+        uses: actions/cache@v3
         with:
-          repository: https://github.com/shakilmunavary/java-tomcat-maven-example.git
-          ref: master
+          path: .terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
 
-      # Build Stage
-      - name: Build Application
-        run: |
-          mvn clean package
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
 
-      # Unit Testing Stage
-      - name: Run Unit Tests
+      - name: Terraform Init
         run: |
-          mvn test
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            -backend-config="container_name=${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+            -backend-config="key=${{ secrets.AZURE_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}"
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
 
-      # Code Quality Analysis Stage
-      - name: Code Quality Analysis
-        run: |
-          # Analyze code quality using Sonar
-          sonar-scanner
-          echo "Code Analysis done"
+      - name: Terraform Validate
+        run: terraform validate
 
-      # Upload Artifacts Stage
-      - name: Upload Artifacts
-        run: |
-          # Upload artifacts to JFrog
-          curl -u <username>:<password> -T target/java-tomcat-maven-example.war https://<jfrog_url>/artifactory/<repo-name>/java-tomcat-maven-example.war
-          echo "Upload Artifacts done"
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
-      # Deployment Stage
-      - name: Deployment to AWS EC2
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: tfplan
+
+  apply:
+    name: Terraform Apply
+    needs: plan
+    runs-on: ubuntu-latest
+    environment:
+      name: terraform-apply
+      url: https://example.com/terraform-apply
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Terraform modules
+        uses: actions/cache@v3
+        with:
+          path: .terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: .
+
+      - name: Terraform Init
         run: |
-          scp -i <path-to-key> target/java-tomcat-maven-example.war <ec2-user>@<ec2-instance-ip>:/opt/tomcat/webapp/
-          ssh -i <path-to-key> <ec2-user>@<ec2-instance-ip> "sudo cp /opt/tomcat/webapp/java-tomcat-maven-example.war /opt/tomcat/webapp/"
+          terraform init \
+            -backend-config="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+            -backend-config="container_name=${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}" \
+            -backend-config="key=${{ secrets.AZURE_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}"
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+
+      - name: Terraform Apply
+        run: terraform apply -input=false tfplan
+        env:
+          TF_VAR_environment: apply
+**[INFRA_CICD_CODE_GENERATION_COMPLETE]**

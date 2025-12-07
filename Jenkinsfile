@@ -1,28 +1,28 @@
-```groovy
 pipeline {
     agent any
-    environment {
-        CODE_REPO_URL      = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH     = 'master'
-        CHECKOUT_CRED_ID   = 'Roshan-Github'
-        SONAR_HOST_URL     = 'http://10.0.3.123:9000/sonar/'
-        SKIP_QUALITY_GATE  = 'true'
-    }
     options {
         timestamps()
         disableConcurrentBuilds()
     }
+    environment {
+        CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH = 'master'
+        CHECKOUT_CRED_ID = 'Roshan-Github'
+        SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
+    }
     triggers {
         pollSCM('H/15 * * * *')
-        // Uncomment the following line to enable GitHub webhook triggering:
-        // GenericTrigger(...)
+        // For GitHub/GitLab webhooks, configure the webhook in the repository settings.
     }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error('CODE_REPO_URL is required to proceed.')
+                        error 'CODE_REPO_URL must be provided to proceed with checkout.'
+                    }
+                    if (!env.DEFAULT_BRANCH?.trim()) {
+                        error 'DEFAULT_BRANCH must be defined for checkout.'
                     }
                 }
                 checkout([
@@ -39,29 +39,37 @@ pipeline {
         }
         stage('build') {
             steps {
-                sh 'mvn -B -U clean package -DskipTests=false'
+                ansiColor('xterm') {
+                    sh 'mvn -B -U clean package -DskipTests=false'
+                }
             }
         }
         stage('unit-tests') {
             steps {
-                sh 'mvn -B test'
-                junit '**/target/surefire-reports/*.xml'
+                ansiColor('xterm') {
+                    sh 'mvn -B test'
+                }
+                junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: false
             }
         }
         stage('static-scan') {
             environment {
-                SONAR_PROJECT_KEY = 'java-tomcat-maven-example'
+                SKIP_QUALITY_GATE = 'true'
             }
             steps {
-                withCredentials([string(credentialsId: 'Sonar-Token', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('Mysonar') {
-                        sh '''
-                            mvn -B -U sonar:sonar \
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                script {
+                    if (!env.SONAR_TOKEN?.trim()) {
+                        error 'SONAR_TOKEN must be provided for the SonarQube scan.'
+                    }
+                }
+                withSonarQubeEnv('Mysonar') {
+                    ansiColor('xterm') {
+                        sh """
+                            mvn sonar:sonar \
                                 -Dsonar.host.url=${SONAR_HOST_URL} \
                                 -Dsonar.login=${SONAR_TOKEN} \
-                                -DskipTests=true
-                        '''
+                                -Dsonar.qualitygate.skip=${SKIP_QUALITY_GATE}
+                        """
                     }
                 }
             }
@@ -74,4 +82,4 @@ pipeline {
         }
     }
 }
-[CICD_CODE_GENERATION_COMPLETE]
+// [CICD_CODE_GENERATION_COMPLETE]

@@ -1,8 +1,12 @@
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
         timestamps()
+        disableConcurrentBuilds()
+    }
+    triggers {
+        // Configure a Git webhook or adjust polling as required.
+        pollSCM('H/5 * * * *')
     }
     environment {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
@@ -15,42 +19,47 @@ pipeline {
         stage('checkout') {
             steps {
                 script {
-                    if (!env.CODE_REPO_URL?.trim()) {
-                        error('CODE_REPO_URL is not set. Aborting pipeline.')
+                    if (!env.CODE_REPO_URL) {
+                        error 'CODE_REPO_URL is required but not provided.'
                     }
                 }
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: env.DEFAULT_BRANCH]],
+                    branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
-                    userRemoteConfigs: [[
-                        url: env.CODE_REPO_URL,
-                        credentialsId: env.CHECKOUT_CRED_ID
-                    ]]
+                    userRemoteConfigs: [[url: env.CODE_REPO_URL, credentialsId: env.CHECKOUT_CRED_ID]]
                 ])
             }
         }
         stage('build') {
             steps {
-                sh 'mvn -B -U clean package -DskipTests=false'
+                ansiColor('xterm') {
+                    sh 'mvn -B -U clean package -DskipTests=false'
+                }
             }
         }
         stage('unit-tests') {
             steps {
-                sh 'mvn -B test'
-                junit '**/target/surefire-reports/*.xml'
+                ansiColor('xterm') {
+                    sh 'mvn -B test'
+                }
+                junit 'target/surefire-reports/*.xml'
             }
         }
         stage('static-scan') {
             steps {
-                withSonarQubeEnv('Mysonar') {
-                    sh '''
-                        mvn -B sonar:sonar \
-                            -Dsonar.projectKey=appName \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.qualitygate.wait=true
-                    '''.stripIndent().trim()
+                ansiColor('xterm') {
+                    withEnv(["SKIP_QUALITY_GATE=${env.SKIP_QUALITY_GATE}"]) {
+                        withSonarQubeEnv('Mysonar') {
+                            sh """
+                                mvn -B sonar:sonar \
+                                    -Dsonar.host.url=${env.SONAR_HOST_URL} \
+                                    -Dsonar.projectKey=sonarProjectKey \
+                                    -DskipTests=true
+                            """
+                        }
+                    }
                 }
             }
         }

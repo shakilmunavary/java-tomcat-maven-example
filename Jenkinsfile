@@ -1,37 +1,38 @@
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
-        disableConcurrentBuilds()
         timestamps()
     }
-    environment {
-        CODE_REPO_URL     = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH    = 'master'
-        CHECKOUT_CRED_ID  = 'Roshan-Github'
-        SONAR_HOST_URL    = 'http://10.0.3.123:9000/sonar/'
-    }
     triggers {
-        pollSCM('H/5 * * * *') // Configure Git webhook if preferred
+        // Uncomment the line below to enable SCM polling if webhooks are unavailable.
+        // pollSCM('H/5 * * * *')
+    }
+    environment {
+        CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH = 'master'
+        CHECKOUT_CRED_ID = 'Roshan-Github'
+        SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
     }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error('CODE_REPO_URL is not set. Failing the pipeline.')
+                        error('CODE_REPO_URL is required for the pipeline to proceed.')
+                    }
+                    if (!env.DEFAULT_BRANCH?.trim()) {
+                        error('DEFAULT_BRANCH must be defined for the checkout stage.')
                     }
                 }
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: env.CODE_REPO_URL,
-                        credentialsId: env.CHECKOUT_CRED_ID
-                    ]]
-                ])
+                ansiColor('xterm') {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [],
+                        userRemoteConfigs: [[url: env.CODE_REPO_URL, credentialsId: env.CHECKOUT_CRED_ID]]
+                    ])
+                }
             }
         }
         stage('build') {
@@ -46,7 +47,11 @@ pipeline {
                 ansiColor('xterm') {
                     sh 'mvn -B test'
                 }
-                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
             }
         }
         stage('static-scan') {
@@ -55,7 +60,9 @@ pipeline {
             }
             steps {
                 withSonarQubeEnv('Mysonar') {
-                    sh 'mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar'
+                    ansiColor('xterm') {
+                        sh 'mvn -B sonar:sonar -Dsonar.projectKey=appName -Dsonar.host.url=${env.SONAR_HOST_URL}'
+                    }
                 }
             }
         }
@@ -67,4 +74,4 @@ pipeline {
         }
     }
 }
-[CICD_CODE_GENERATION_COMPLETE]
+// **[CICD_CODE_GENERATION_COMPLETE]**

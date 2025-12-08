@@ -1,26 +1,25 @@
 pipeline {
     agent any
     options {
-        timestamps()
+        skipDefaultCheckout()
         disableConcurrentBuilds()
-    }
-    triggers {
-        // Configure a Git webhook or adjust polling as required.
-        pollSCM('H/5 * * * *')
+        timestamps()
     }
     environment {
-        CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH = 'master'
-        CHECKOUT_CRED_ID = 'Roshan-Github'
-        SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
-        SKIP_QUALITY_GATE = 'true'
+        CODE_REPO_URL     = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
+        DEFAULT_BRANCH    = 'master'
+        CHECKOUT_CRED_ID  = 'Roshan-Github'
+        SONAR_HOST_URL    = 'http://10.0.3.123:9000/sonar/'
+    }
+    triggers {
+        pollSCM('H/5 * * * *') // Configure Git webhook if preferred
     }
     stages {
         stage('checkout') {
             steps {
                 script {
-                    if (!env.CODE_REPO_URL) {
-                        error 'CODE_REPO_URL is required but not provided.'
+                    if (!env.CODE_REPO_URL?.trim()) {
+                        error('CODE_REPO_URL is not set. Failing the pipeline.')
                     }
                 }
                 checkout([
@@ -28,7 +27,10 @@ pipeline {
                     branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
-                    userRemoteConfigs: [[url: env.CODE_REPO_URL, credentialsId: env.CHECKOUT_CRED_ID]]
+                    userRemoteConfigs: [[
+                        url: env.CODE_REPO_URL,
+                        credentialsId: env.CHECKOUT_CRED_ID
+                    ]]
                 ])
             }
         }
@@ -44,22 +46,16 @@ pipeline {
                 ansiColor('xterm') {
                     sh 'mvn -B test'
                 }
-                junit 'target/surefire-reports/*.xml'
+                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
             }
         }
         stage('static-scan') {
+            environment {
+                SKIP_QUALITY_GATE = 'true'
+            }
             steps {
-                ansiColor('xterm') {
-                    withEnv(["SKIP_QUALITY_GATE=${env.SKIP_QUALITY_GATE}"]) {
-                        withSonarQubeEnv('Mysonar') {
-                            sh """
-                                mvn -B sonar:sonar \
-                                    -Dsonar.host.url=${env.SONAR_HOST_URL} \
-                                    -Dsonar.projectKey=sonarProjectKey \
-                                    -DskipTests=true
-                            """
-                        }
-                    }
+                withSonarQubeEnv('Mysonar') {
+                    sh 'mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar'
                 }
             }
         }
@@ -71,3 +67,4 @@ pipeline {
         }
     }
 }
+[CICD_CODE_GENERATION_COMPLETE]

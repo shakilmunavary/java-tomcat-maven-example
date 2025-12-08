@@ -1,4 +1,4 @@
-name: Terraform CI/CD Pipeline
+name: Terraform CI/CD
 
 on:
   push:
@@ -14,11 +14,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  plan:
+  terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
     env:
-      TERRAFORM_VERSION: 1.5.0
+      TERRAFORM_REPO_URL: https://github.com/shakilmunavary/java-tomcat-maven-example.git
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -26,49 +26,59 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Terraform 1.5.0
+        uses: hashicorp/setup-terraform@v3
         with:
-          fetch-depth: 0
+          terraform_version: 1.5.0
 
       - name: Cache Terraform directory
         uses: actions/cache@v3
         with:
           path: .terraform
-          key: terraform-1.5.0-${{ runner.os }}-${{ hashFiles('**/*.tf*') }}
-          restore-keys: terraform-1.5.0-${{ runner.os }}-
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf', '**/*.tfvars') }}
+          restore-keys: terraform-${{ runner.os }}-
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
+      - name: Validate required inputs
+        run: |
+          set -euo pipefail
+          required=(
+            TERRAFORM_REPO_URL
+            ARM_SUBSCRIPTION_ID
+            ARM_TENANT_ID
+            ARM_CLIENT_ID
+            ARM_CLIENT_SECRET
+          )
+          for var in "${required[@]}"; do
+            if [ -z "${!var:-}" ]; then
+              echo "$var must be provided"
+              exit 1
+            fi
+          done
 
       - name: Terraform Init
-        run: |
-          terraform init -input=false \
-            -backend-config="storage_account_name=${{ secrets.AZURE_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="resource_group_name=${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}" \
-            -backend-config="container_name=${{ secrets.AZURE_BACKEND_CONTAINER_NAME }}" \
-            -backend-config="key=${{ secrets.AZURE_BACKEND_STATE_KEY }}"
+        run: terraform init -input=false
+
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
         run: terraform plan -input=false -out=tfplan
 
-      - name: Upload Plan Artifact
+      - name: Upload Terraform plan
         uses: actions/upload-artifact@v3
         with:
           name: terraform-plan
           path: tfplan
 
-  apply:
+  terraform-apply:
     name: Terraform Apply
-    needs: plan
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    needs: terraform-plan
     environment:
-      name: production
+      name: terraform-apply
     env:
-      TERRAFORM_VERSION: 1.5.0
+      TERRAFORM_REPO_URL: https://github.com/shakilmunavary/java-tomcat-maven-example.git
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -76,34 +86,44 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Terraform 1.5.0
+        uses: hashicorp/setup-terraform@v3
         with:
-          fetch-depth: 0
+          terraform_version: 1.5.0
 
       - name: Cache Terraform directory
         uses: actions/cache@v3
         with:
           path: .terraform
-          key: terraform-1.5.0-${{ runner.os }}-${{ hashFiles('**/*.tf*') }}
-          restore-keys: terraform-1.5.0-${{ runner.os }}-
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf', '**/*.tfvars') }}
+          restore-keys: terraform-${{ runner.os }}-
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-
-      - name: Terraform Init
+      - name: Validate required inputs
         run: |
-          terraform init -input=false \
-            -backend-config="storage_account_name=${{ secrets.AZURE_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="resource_group_name=${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}" \
-            -backend-config="container_name=${{ secrets.AZURE_BACKEND_CONTAINER_NAME }}" \
-            -backend-config="key=${{ secrets.AZURE_BACKEND_STATE_KEY }}"
+          set -euo pipefail
+          required=(
+            TERRAFORM_REPO_URL
+            ARM_SUBSCRIPTION_ID
+            ARM_TENANT_ID
+            ARM_CLIENT_ID
+            ARM_CLIENT_SECRET
+          )
+          for var in "${required[@]}"; do
+            if [ -z "${!var:-}" ]; then
+              echo "$var must be provided"
+              exit 1
+            fi
+          done
 
-      - name: Download Plan Artifact
+      - name: Download Terraform plan
         uses: actions/download-artifact@v3
         with:
           name: terraform-plan
           path: .
 
+      - name: Terraform Init
+        run: terraform init -input=false
+
       - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve tfplan
+        run: terraform apply -input=false tfplan

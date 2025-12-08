@@ -3,10 +3,7 @@ pipeline {
     options {
         timestamps()
     }
-    triggers {
-        // Uncomment the line below to enable SCM polling if webhooks are unavailable.
-        // pollSCM('H/5 * * * *')
-    }
+
     environment {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
         DEFAULT_BRANCH = 'master'

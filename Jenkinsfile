@@ -1,113 +1,135 @@
-pipeline {
-    agent any
+```yaml
+name: Terraform CI/CD
 
-    environment {
-        CODE_REPO_URL   = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
-        DEFAULT_BRANCH  = 'master'
-        CHECKOUT_CRED_ID = 'Roshan-Github'
-        SONAR_HOST_URL  = 'http://10.0.3.123:9000/sonar/'
-        SKIP_QUALITY_GATE = 'true'
-    }
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
 
-    options {
-        timestamps()
-        disableConcurrentBuilds()
-    }
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
 
-    triggers {
-        // Uncomment one of the following as needed:
-        // pollSCM('H/5 * * * *')
-        // Generic webhook trigger can be configured in Jenkins job UI
-    }
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_CLI_ARGS_init: "-input=false"
+  TF_CLI_ARGS_apply: "-input=false -auto-approve"
+  TF_CLI_ARGS_plan: "-input=false"
+  TF_WORKSPACE: "default"
 
-    stages {
-        stage('Validate Configuration') {
-            steps {
-                script {
-                    if (!env.CODE_REPO_URL?.trim()) {
-                        error "CODE_REPO_URL is not defined. Failing early."
-                    }
-                    if (!env.DEFAULT_BRANCH?.trim()) {
-                        error "DEFAULT_BRANCH is not defined. Failing early."
-                    }
-                }
-            }
-        }
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
 
-        stage('checkout') {
-            steps {
-                script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
-                        userRemoteConfigs: [[
-                            url: env.CODE_REPO_URL,
-                            credentialsId: env.CHECKOUT_CRED_ID
-                        ]]
-                    ])
-                }
-            }
-        }
+    steps:
+      - name: Checkout Terraform repo
+        uses: actions/checkout@v4
+        with:
+          repository: shakilmunavary/java-tomcat-maven-example
+          ref: master
 
-        stage('build') {
-            steps {
-                sh 'mvn -B -U clean package -DskipTests=false'
-            }
-        }
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
 
-        stage('unit-tests') {
-            steps {
-                sh 'mvn -B test'
-                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-            }
-        }
+      - name: Cache .terraform
+        uses: actions/cache@v3
+        with:
+          path: .terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
 
-        stage('static-scan') {
-            environment {
-                // SonarQube environment name configured in Jenkins global config
-                SONARQUBE_ENV = 'Mysonar'
-            }
-            steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    sh """
-                        mvn -B sonar:sonar \
-                          -Dsonar.host.url=${SONAR_HOST_URL}
-                    """
-                }
-            }
-        }
+      - name: Terraform Init (AzureRM backend)
+        run: |
+          terraform init \
+            -backend-config="subscription_id=${ARM_SUBSCRIPTION_ID}" \
+            -backend-config="tenant_id=${ARM_TENANT_ID}" \
+            -backend-config="client_id=${ARM_CLIENT_ID}" \
+            -backend-config="client_secret=${ARM_CLIENT_SECRET}"
+        # Assumes backend "azurerm" is configured in backend.tf with storage_account_name, container_name, key, etc.
 
-        stage('SonarQube Quality Gate') {
-            when {
-                expression { return env.SKIP_QUALITY_GATE?.toBoolean() == false }
-            }
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Pipeline aborted due to SonarQube quality gate failure: ${qg.status}"
-                        }
-                    }
-                }
-            }
-        }
-    }
+      - name: Terraform Validate
+        run: terraform validate
 
-    post {
-        always {
-            echo "Build finished with status: ${currentBuild.currentResult}"
-        }
-        failure {
-            echo 'Build failed.'
-        }
-        success {
-            echo 'Build succeeded.'
-        }
-        cleanup {
-            echo 'Cleaning workspace...'
-            cleanWs()
-        }
-    }
-}
-**[CICD_CODE_GENERATION_COMPLETE]**
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan.binary
+
+      - name: Convert Plan to JSON (optional)
+        run: terraform show -json tfplan.binary > tfplan.json
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: |
+            tfplan.binary
+            tfplan.json
+
+  terraform-apply:
+    name: Terraform Apply (manual approval)
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      # Configure protection rules for this environment in GitHub (required reviewers) to enforce manual approval
+    defaults:
+      run:
+        working-directory: .
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Terraform repo
+        uses: actions/checkout@v4
+        with:
+          repository: shakilmunavary/java-tomcat-maven-example
+          ref: master
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Cache .terraform
+        uses: actions/cache@v3
+        with:
+          path: .terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tfplan
+          path: .
+
+      - name: Terraform Init (AzureRM backend)
+        run: |
+          terraform init \
+            -backend-config="subscription_id=${ARM_SUBSCRIPTION_ID}" \
+            -backend-config="tenant_id=${ARM_TENANT_ID}" \
+            -backend-config="client_id=${ARM_CLIENT_ID}" \
+            -backend-config="client_secret=${ARM_CLIENT_SECRET}"
+
+      - name: Terraform Apply
+        run: terraform apply tfplan.binary
+**[INFRA_CICD_CODE_GENERATION_COMPLETE]**

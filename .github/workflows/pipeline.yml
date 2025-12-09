@@ -1,70 +1,62 @@
 name: Terraform CI/CD
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
 concurrency:
   group: terraform-${{ github.ref }}
   cancel-in-progress: false
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-permissions:
-  contents: read
-
-env:
-  TF_IN_AUTOMATION: true
-  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-
 jobs:
-  plan:
-    name: Terraform Plan
+  terraform:
+    name: Terraform Init/Validate/Plan
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      AZURE_BACKEND_STORAGE_ACCOUNT: ${{ secrets.AZURE_BACKEND_STORAGE_ACCOUNT }}
+      AZURE_BACKEND_CONTAINER: ${{ secrets.AZURE_BACKEND_CONTAINER }}
+      AZURE_BACKEND_KEY: ${{ secrets.AZURE_BACKEND_KEY }}
+      AZURE_BACKEND_RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform 1.5.0
+      - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
 
-      - name: Cache Terraform directory
+      - name: Cache Terraform workflow
         uses: actions/cache@v3
         with:
           path: |
             .terraform
             .terraform.lock.hcl
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf*', '**/*.tfvars*') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf') }}
+          restore-keys: terraform-${{ runner.os }}-
 
-      - name: Init
+      - name: Terraform Init
         run: |
-          terraform init -input=false \
-            -backend-config="storage_account_name=${{ secrets.AZURE_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ secrets.AZURE_STATE_CONTAINER }}" \
-            -backend-config="key=${{ secrets.AZURE_STATE_KEY }}" \
-            -backend-config="resource_group_name=${{ secrets.AZURE_STATE_RESOURCE_GROUP }}"
-        env:
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          terraform init \
+            -backend-config="storage_account_name=${{ env.AZURE_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ env.AZURE_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ env.AZURE_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ env.AZURE_BACKEND_RESOURCE_GROUP }}"
 
-      - name: Validate
+      - name: Terraform Validate
         run: terraform validate
 
-      - name: Plan
-        run: terraform plan -out=tfplan -input=false
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
 
-      - name: Upload plan artifact
+      - name: Upload Plan Artifact
         uses: actions/upload-artifact@v3
         with:
           name: terraform-plan
@@ -72,47 +64,41 @@ jobs:
 
   apply:
     name: Terraform Apply
-    needs: plan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    needs: terraform
     environment:
-      name: production
-    defaults:
-      run:
-        shell: bash
+      name: dev
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      AZURE_BACKEND_STORAGE_ACCOUNT: ${{ secrets.AZURE_BACKEND_STORAGE_ACCOUNT }}
+      AZURE_BACKEND_CONTAINER: ${{ secrets.AZURE_BACKEND_CONTAINER }}
+      AZURE_BACKEND_KEY: ${{ secrets.AZURE_BACKEND_KEY }}
+      AZURE_BACKEND_RESOURCE_GROUP: ${{ secrets.AZURE_BACKEND_RESOURCE_GROUP }}
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Terraform 1.5.0
+      - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.0
 
-      - name: Cache Terraform directory
-        uses: actions/cache@v3
-        with:
-          path: |
-            .terraform
-            .terraform.lock.hcl
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/*.tf*', '**/*.tfvars*') }}
-          restore-keys: |
-            terraform-${{ runner.os }}-
-
-      - name: Download plan artifact
+      - name: Download Plan Artifact
         uses: actions/download-artifact@v3
         with:
           name: terraform-plan
+          path: .
 
-      - name: Init
+      - name: Terraform Init
         run: |
-          terraform init -input=false \
-            -backend-config="storage_account_name=${{ secrets.AZURE_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ secrets.AZURE_STATE_CONTAINER }}" \
-            -backend-config="key=${{ secrets.AZURE_STATE_KEY }}" \
-            -backend-config="resource_group_name=${{ secrets.AZURE_STATE_RESOURCE_GROUP }}"
-        env:
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          terraform init \
+            -backend-config="storage_account_name=${{ env.AZURE_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ env.AZURE_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ env.AZURE_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ env.AZURE_BACKEND_RESOURCE_GROUP }}"
 
-      - name: Apply
-        run: terraform apply -input=false tfplan
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan

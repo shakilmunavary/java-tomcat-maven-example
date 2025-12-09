@@ -1,9 +1,11 @@
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
-        timestamps()
         disableConcurrentBuilds()
+        timestamps()
+    }
+    triggers {
+        pollSCM('H/5 * * * *') // or configure Git webhook trigger
     }
     environment {
         CODE_REPO_URL = 'https://github.com/shakilmunavary/java-tomcat-maven-example.git'
@@ -12,26 +14,28 @@ pipeline {
         SONAR_HOST_URL = 'http://10.0.3.123:9000/sonar/'
         SKIP_QUALITY_GATE = 'true'
     }
-    triggers {
-        pollSCM('H/5 * * * *')
-        // For GitHub webhooks prefer: triggers { ghprbTrigger(...) } or use Git hook on the repo
-    }
     stages {
         stage('checkout') {
             steps {
                 script {
                     if (!env.CODE_REPO_URL?.trim()) {
-                        error 'CODE_REPO_URL is required but not provided.'
+                        error('CODE_REPO_URL is required for the pipeline')
                     }
                     if (!env.DEFAULT_BRANCH?.trim()) {
-                        error 'DEFAULT_BRANCH is required but not provided.'
+                        error('DEFAULT_BRANCH is required for the pipeline')
+                    }
+                    if (!env.CHECKOUT_CRED_ID?.trim()) {
+                        error('CHECKOUT_CRED_ID is required for checkout')
                     }
                 }
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${env.DEFAULT_BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CleanBeforeCheckout']],
+                    submoduleCfg: [],
+                    extensions: [
+                        [$class: 'CleanBeforeCheckout']
+                    ],
                     userRemoteConfigs: [[
                         url: env.CODE_REPO_URL,
                         credentialsId: env.CHECKOUT_CRED_ID
@@ -55,19 +59,21 @@ pipeline {
             }
         }
         stage('static-scan') {
-            environment {
-                SKIP_QUALITY_GATE = 'true'
-            }
             steps {
-                withSonarQubeEnv('Mysonar') {
-                    ansiColor('xterm') {
-                        sh """
-                            mvn sonar:sonar \
-                                -Dsonar.host.url=${env.SONAR_HOST_URL} \
-                                -Dsonar.login=${env.SONAR_TOKEN ?: ''} \
-                                -DskipTests=true \
-                                -Dsonar.qualitygate.wait=${env.SKIP_QUALITY_GATE == 'true' ? 'false' : 'true'}
-                        """
+                script {
+                    if (!env.SONAR_TOKEN?.trim()) {
+                        error('SONAR_TOKEN is required to run SonarQube analysis')
+                    }
+                    def qualityGateWait = env.SKIP_QUALITY_GATE == 'true' ? 'false' : 'true'
+                    withSonarQubeEnv('Mysonar') {
+                        ansiColor('xterm') {
+                            sh """
+                                mvn -B sonar:sonar \
+                                  -Dsonar.host.url=$SONAR_HOST_URL \
+                                  -Dsonar.login=$SONAR_TOKEN \
+                                  -Dsonar.qualitygate.wait=${qualityGateWait}
+                            """
+                        }
                     }
                 }
             }
@@ -80,3 +86,4 @@ pipeline {
         }
     }
 }
+// [CICD_CODE_GENERATION_COMPLETE]
